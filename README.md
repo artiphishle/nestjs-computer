@@ -1,73 +1,94 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Nest.js DI (Dependency Injection)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This is chapter 6 in the Nest.js Udemy course found here: [Nest.Js – The complete developers guide](https://www.udemy.com/course/nestjs-the-complete-developers-guide/)
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Dependency Injection
 
-## Description
+### DI... what?
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+DI is a design pattern that allows us to create loosely coupled code. It allows us to write code that is more modular, reusable, and testable.
 
-## Installation
+### How to use in Nest?
+
+We use DI by creating a class that will be injected into another class. We then use the `@Injectable()` decorator to mark the class as injectable. We then use the `@Inject()` decorator to inject the class into another class.
+
+## Project
+
+we're going to create a simple project to simulate a computer.
+First we're deleting the files (except main.ts) in the project (auto-generated using `nest new nestjs-di`) and starting from scratch.
+
+### Setup the project
+
+Let's setup the project using Nest CLI:
 
 ```bash
-$ npm install
+# Generate the modules
+nest g module computer
+nest g module cpu
+nest g module disk
+nest g module power
+
+# Generate the services
+nest g service cpu
+nest g service disk
+nest g service power
+
+# Generate the controllers
+nest g controller computer
 ```
 
-## Running the app
+### Share services between modules
 
-```bash
-# development
-$ npm run start
+Our disk and cpu modules require some power to work correctly. After adding a `supplyPower(watts: number)` method to the power service, we can inject the power service into the cpu and disk services.
 
-# watch mode
-$ npm run start:dev
+#### 1. Export the power service
 
-# production mode
-$ npm run start:prod
+We need to export the power service from the power module so that we can use it in other modules.
+
+```ts
+// power.module.ts
+@Module({
+  providers: [PowerService],
+  exports: [PowerService], // <-- Export the power service
+})
 ```
 
-## Test
+#### 2. Import the power service
 
-```bash
-# unit tests
-$ npm run test
+We can now import the power service into the cpu and disk modules.
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```ts
+// cpu.module.ts
+// disk.module.ts
+@Module({
+  imports: [PowerModule], // <-- Import the power module
+  providers: [CpuService],
+})
 ```
 
-## Support
+#### 3. Inject the power service
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+We can now inject the power service into the cpu and disk services.
 
-## Stay in touch
+```ts
+// cpu.service.ts
+// disk.service.ts
+@Injectable()
+export class CpuService {
+  constructor(private powerService: PowerService) {} // <-- Inject the power service
+}
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Now we can use the service by calling e.g. `this.powerService.supplyPower(100)`.
 
-## License
+#### 4. Add the disk and cpu services to the computer module
 
-Nest is [MIT licensed](LICENSE).
+We can now add exports to the cpu and disk modules and then import them in the computer module:
+
+```ts
+// computer.module.ts
+@Module({
+  imports: [CpuModule, DiskModule], // <-- Import cpu & disk modules
+  controllers: [ComputerController],
+})
+```
